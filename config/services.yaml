@@ -30,3 +30,47 @@ services:
         arguments:
             $refreshTokenService: '@App\Service\RefreshTokenService'
         tags: [ 'console.command' ]
+    login.rate_limiter:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'token_bucket'
+                limit: 5
+                rate:
+                    interval: '5 minutes'
+            $storage: '@rate_limiter.storage.cache_storage'
+    register.rate_limiter:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'token_bucket'
+                limit: 3
+                rate:
+                    interval: '15 minutes'
+            $storage: '@rate_limiter.storage.cache_storage'
+    token_refresh.rate_limiter:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'token_bucket'
+                limit: 10
+                rate:
+                    interval: '10 minutes'
+            $storage: '@rate_limiter.storage.cache_storage'
+    api.rate_limiter:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'sliding_window'
+                limit: 60
+                interval: '1 minute'
+            $storage: '@rate_limiter.storage.cache_storage'
+    # Rate Limiter Listener
+    App\EventListener\RateLimitListener:
+        arguments:
+            $loginLimiter: '@login.rate_limiter'
+            $registerLimiter: '@register.rate_limiter'
+            $tokenRefreshLimiter: '@token_refresh.rate_limiter'
+            $apiLimiter: '@api.rate_limiter'
+        tags:
+            - { name: kernel.event_subscriber }
