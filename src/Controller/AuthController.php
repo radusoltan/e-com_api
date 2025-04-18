@@ -9,12 +9,19 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 #[Route('/api', name: 'api_')]
 final class AuthController extends AbstractController
 {
+
+    public function __construct(
+        private RateLimiterFactory $tokenRefreshLimiter
+    ) {
+    }
+
     /**
      * Refresh JWT token using a valid refresh token
      */
@@ -26,6 +33,31 @@ final class AuthController extends AbstractController
         UserService $userService
     ): JsonResponse
     {
+
+        // Exemplu manual de rate limiting (de regulă este acoperit de listener)
+        // Se poate folosi pentru logică mai complexă de rate limiting
+        $limiter = $this->tokenRefreshLimiter->create($request->getClientIp());
+        $limit = $limiter->consume();
+
+        $headers = [
+            'X-RateLimit-Remaining' => $limit->getRemainingTokens(),
+            'X-RateLimit-Retry-After' => $limit->getRetryAfter()->getTimestamp(),
+            'X-RateLimit-Limit' => $limit->getLimit(),
+        ];
+
+        if (!$limit->isAccepted()) {
+            $retryAfter = $limit->getRetryAfter()->getTimestamp() - time();
+
+            $response = new JsonResponse([
+                'success' => false,
+                'error' => 'Rate limit exceeded. Try again later.',
+                'retry_after' => $retryAfter
+            ], Response::HTTP_TOO_MANY_REQUESTS, $headers);
+
+            $response->headers->set('Retry-After', $retryAfter);
+            return $response;
+        }
+
         // Validate content type
         if (!str_starts_with($request->headers->get('Content-Type', ''), 'application/json')) {
             return $this->json([

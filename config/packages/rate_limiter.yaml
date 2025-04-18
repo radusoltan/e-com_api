@@ -1,0 +1,33 @@
+framework:
+  rate_limiter:
+    # Limitare pentru login - 5 încercări la 5 minute per adresă IP
+    login:
+      # Strategia "token bucket" permite un număr fix de încercări într-o perioadă
+      policy: 'token_bucket'
+      limit: 5
+      rate:
+        interval: '5 minutes'
+      cache_pool: 'rate_limiter.cache'
+
+    # Limitare pentru register - 3 încercări la 15 minute per adresă IP
+    register:
+      policy: 'token_bucket'
+      limit: 3
+      rate:
+        interval: '15 minutes'
+      cache_pool: 'rate_limiter.cache'
+
+    # Limitare pentru refresh token - 10 încercări la 10 minute per adresă IP
+    token_refresh:
+      policy: 'token_bucket'
+      limit: 10
+      rate:
+        interval: '10 minutes'
+      cache_pool: 'rate_limiter.cache'
+
+    # Limitare globală API per IP - 60 requests per minut
+    api:
+      policy: 'sliding_window'
+      limit: 60
+      interval: '1 minute'
+      cache_pool: 'rate_limiter.cache'
