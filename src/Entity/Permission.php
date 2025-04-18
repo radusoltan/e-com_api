@@ -8,6 +8,8 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PermissionRepository::class)]
+#[ORM\Table(name: '`permission`')]
+#[ORM\UniqueConstraint(name: 'UNIQ_PERMISSION_NAME', fields: ['name'])]
 class Permission
 {
     #[ORM\Id]
@@ -30,9 +32,13 @@ class Permission
     #[ORM\Column(length: 255)]
     private ?string $category = null;
 
+    #[ORM\Column]
+    private \DateTimeImmutable $createdAt;
+
     public function __construct()
     {
         $this->roles = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -52,7 +58,10 @@ class Permission
     {
         if (!$this->roles->contains($role)) {
             $this->roles->add($role);
-            $role->addPermission($this);
+            // Avoid infinite loop
+            if (!$role->getPermissions()->contains($this)) {
+                $role->addPermission($this);
+            }
         }
 
         return $this;
@@ -101,6 +110,11 @@ class Permission
         $this->category = $category;
 
         return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
     }
 
     public function __toString(): string

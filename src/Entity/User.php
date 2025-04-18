@@ -13,6 +13,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_USERNAME', fields: ['username'])]
+#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -24,9 +25,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $username = null;
 
     /**
-     * @var list<string> The user roles
+     * @var Collection<int, Role>
      */
-    #[ORM\ManyToOne(targetEntity: Role::class, inversedBy: 'users')]
+    #[ORM\ManyToMany(targetEntity: Role::class, mappedBy: 'users')]
     #[ORM\JoinTable(name: 'user_roles')]
     private Collection $roles;
 
@@ -39,21 +40,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255)]
     private ?string $email = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $firstName = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $lastName = null;
 
     #[ORM\Column]
-    private ?bool $isActive = null;
+    private ?bool $isActive = true;
 
-    #[ORM\Column(type: Types::DATE_IMMUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $lastLogin = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private \DateTimeImmutable $createdAt;
+
+    #[ORM\OneToMany(targetEntity: RefreshToken::class, mappedBy: 'user', orphanRemoval: true)]
+    private Collection $refreshTokens;
 
     public function __construct()
     {
         $this->roles = new ArrayCollection();
+        $this->refreshTokens = new ArrayCollection();
+        $this->isActive = true;
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -91,27 +101,39 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles
-            ->map(fn(Role $role) => 'ROLE_'.strtoupper($role->getName()))
+            ->map(fn(Role $role) => 'ROLE_' . strtoupper($role->getName()))
             ->toArray();
+
         // guarantee every user at least has ROLE_USER
         $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
     }
 
+    /**
+     * @return Collection<int, Role>
+     */
+    public function getRoleEntities(): Collection
+    {
+        return $this->roles;
+    }
+
     public function addRole(Role $role): static
     {
-        if(!$this->roles->contains($role)) {
+        if (!$this->roles->contains($role)) {
             $this->roles->add($role);
-            $role->addUser($this);
+            // Avoid infinite loop
+            if (!$role->getUsers()->contains($this)) {
+                $role->addUser($this);
+            }
         }
         return $this;
     }
 
     public function removeRole(Role $role): static
     {
-        if($this->roles->contains($role)) {
-            $this->roles->removeElement($role);
+        if ($this->roles->removeElement($role)) {
+            $role->removeUser($this);
         }
         return $this;
     }
@@ -157,7 +179,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->firstName;
     }
 
-    public function setFirstName(string $firstName): static
+    public function setFirstName(?string $firstName): static
     {
         $this->firstName = $firstName;
 
@@ -169,7 +191,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->lastName;
     }
 
-    public function setLastName(string $lastName): static
+    public function setLastName(?string $lastName): static
     {
         $this->lastName = $lastName;
 
@@ -193,9 +215,50 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->lastLogin;
     }
 
-    public function setLastLogin(\DateTimeImmutable $lastLogin): static
+    public function setLastLogin(?\DateTimeImmutable $lastLogin): static
     {
         $this->lastLogin = $lastLogin;
+
+        return $this;
+    }
+
+    public function updateLastLogin(): static
+    {
+        $this->lastLogin = new \DateTimeImmutable();
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    /**
+     * @return Collection<int, RefreshToken>
+     */
+    public function getRefreshTokens(): Collection
+    {
+        return $this->refreshTokens;
+    }
+
+    public function addRefreshToken(RefreshToken $refreshToken): static
+    {
+        if (!$this->refreshTokens->contains($refreshToken)) {
+            $this->refreshTokens->add($refreshToken);
+            $refreshToken->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRefreshToken(RefreshToken $refreshToken): static
+    {
+        if ($this->refreshTokens->removeElement($refreshToken)) {
+            // set the owning side to null (unless already changed)
+            if ($refreshToken->getUser() === $this) {
+                $refreshToken->setUser(null);
+            }
+        }
 
         return $this;
     }
@@ -233,5 +296,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         // Check in roles array
         return in_array($roleToCheck, $this->getRoles());
+    }
+
+    /**
+     * Get user's full name or username if no name is set
+     */
+    public function getFullName(): string
+    {
+        if ($this->firstName && $this->lastName) {
+            return $this->firstName . ' ' . $this->lastName;
+        } elseif ($this->firstName) {
+            return $this->firstName;
+        } elseif ($this->lastName) {
+            return $this->lastName;
+        }
+
+        return $this->username ?? '';
     }
 }
