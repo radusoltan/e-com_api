@@ -16,28 +16,63 @@ class PermissionRepository extends ServiceEntityRepository
         parent::__construct($registry, Permission::class);
     }
 
-    //    /**
-    //     * @return Permission[] Returns an array of Permission objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('p.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    /**
+     * Find a permission by its name
+     */
+    public function findByName(string $name): ?Permission
+    {
+        return $this->findOneBy(['name' => $name]);
+    }
 
-    //    public function findOneBySomeField($value): ?Permission
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * Find all permissions grouped by category
+     *
+     * @return array<string, Permission[]>
+     */
+    public function findAllGroupedByCategory(): array
+    {
+        $permissions = $this->createQueryBuilder('p')
+            ->orderBy('p.category', 'ASC')
+            ->addOrderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($permissions as $permission) {
+            $category = $permission->getCategory();
+            if (!isset($result[$category])) {
+                $result[$category] = [];
+            }
+            $result[$category][] = $permission;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Find permissions by multiple IDs
+     *
+     * @param array<int> $ids
+     * @return Permission[]
+     */
+    public function findByIds(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('p')
+            ->where('p.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find permissions by category
+     */
+    public function findByCategory(string $category): array
+    {
+        return $this->findBy(['category' => $category], ['name' => 'ASC']);
+    }
 }
