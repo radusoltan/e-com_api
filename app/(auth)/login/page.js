@@ -1,23 +1,55 @@
+"use client"
+
+import {useActionState, useState} from "react"
+import {login} from "@/app/(auth)/action";
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
+
 const LoginPage = ()=>{
+
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [state, action, pending] = useActionState(login,{username, password})
+
+  console.log(state)
 
   return <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
     <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
       Sign in to your account
     </h1>
-    <form className="space-y-4 md:space-y-6" action="#">
+    <form className="space-y-4 md:space-y-6" action={action}>
+      {state?.errors?.message &&
+        <p className="mt-2 text-sm text-red-600 dark:text-red-500"><span className="font-medium">Oops!</span>{state.errors.message}</p>}
       <div>
-        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your
-          email</label>
-        <input type="email" name="email" id="email"
-               className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-               placeholder="name@company.com" required=""/>
+        <label htmlFor="username" className={classNames(
+          state?.errors?.username && "block mb-2 text-sm font-medium text-red-700 dark:text-red-500",
+          "block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+        )}>User Name</label>
+        <input type="text" name="username"
+               className={classNames(
+                 state?.errors?.username && "bg-red-50 border border-red-500 text-red-900 placeholder-red-700 text-sm rounded-lg focus:ring-red-500 dark:bg-gray-700 focus:border-red-500 block w-full p-2.5 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500",
+                 "bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+               )}
+               placeholder="username"/>
+        {state?.errors?.username &&
+          <p className="mt-2 text-sm text-red-600 dark:text-red-500"><span className="font-medium">{state.errors.username}</span></p>}
       </div>
       <div>
         <label htmlFor="password"
-               className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
+               className={classNames(
+                 state?.errors?.username && "block mb-2 text-sm font-medium text-red-700 dark:text-red-500",
+                 "block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+               )}>Password</label>
         <input type="password" name="password" id="password" placeholder="••••••••"
-               className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+               className={classNames(
+                 state?.errors?.username && "bg-red-50 border border-red-500 text-red-900 placeholder-red-700 text-sm rounded-lg focus:ring-red-500 dark:bg-gray-700 focus:border-red-500 block w-full p-2.5 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500",
+                 "bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+               )}
                required=""/>
+        {state?.errors?.password &&
+          <p className="mt-2 text-sm text-red-600 dark:text-red-500"><span className="font-medium">{state.errors.password}</span></p>}
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-start">

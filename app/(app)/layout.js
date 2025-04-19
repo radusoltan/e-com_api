@@ -1,4 +1,4 @@
-import {TopNav} from "@/app/ui/App/TopNav";
+import {AppTopNav} from "@/app/ui/App/AppTopNav";
 import {AppHeader} from "@/app/ui/App/AppHeader";
 
 
@@ -6,7 +6,7 @@ import {AppHeader} from "@/app/ui/App/AppHeader";
 const Applayout = ({children})=>{
 
   return <div className="min-h-full">
-      <TopNav />
+      <AppTopNav />
 
       <AppHeader title="Header Title" />
       <main>

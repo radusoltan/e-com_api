@@ -1,5 +1,6 @@
 import {TopNav} from "@/app/ui/Admin/TopNav";
 import {SideBarComponent} from "@/app/ui/Admin/Sidebar";
+import {AdminTopNav} from "@/app/ui/Admin/AdminTopNav";
 
 const AdminLayout = ({children})=>{
 
@@ -7,6 +8,7 @@ const AdminLayout = ({children})=>{
     <div className="antialiased bg-gray-50 dark:bg-gray-900">
 
       <TopNav />
+      {/*<AdminTopNav />*/}
 
       {/* Sidebar */}
 
