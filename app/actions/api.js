@@ -22,12 +22,17 @@ export const api = {
       body: JSON.stringify(fields)
     })
 
+    const data = await response.json()
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(error.message || 'Login failed');
+      return {
+        success: false,
+        error: data.error || 'Authentication failed'
+      }
     }
 
-    localStorage.setItem('token', response.token);
+    // Parse the expiration date from the response
+    const expiresAt = new Date(data.expires_at)
 
 
   }
