@@ -22,6 +22,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[Route('/api/admin/variations', name: 'api_admin_variations_')]
 final class ProductVariationController extends AbstractController
 {
 
@@ -394,15 +395,12 @@ final class ProductVariationController extends AbstractController
             'formatted_price' => $this->productService->getFormattedPrice($variation),
             'special_price' => $variation->getSpecialPrice(),
             'has_special_price' => $variation->hasValidSpecialPrice(),
-            'special_price_from' => $variation->getSpecialPriceFrom() ?
-                $variation->getSpecialPriceFrom()->format(\DateTimeInterface::ATOM) : null,
-            'special_price_to' => $variation->getSpecialPriceTo() ?
-                $variation->getSpecialPriceTo()->format(\DateTimeInterface::ATOM) : null,
+            'special_price_from' => $variation->getSpecialPriceFrom()?->format(\DateTimeInterface::ATOM),
+            'special_price_to' => $variation->getSpecialPriceTo()?->format(\DateTimeInterface::ATOM),
             'weight' => $variation->getWeight(),
             'active' => $variation->isActive(),
             'created_at' => $variation->getCreatedAt()->format(\DateTimeInterface::ATOM),
-            'updated_at' => $variation->getUpdatedAt() ?
-                $variation->getUpdatedAt()->format(\DateTimeInterface::ATOM) : null,
+            'updated_at' => $variation->getUpdatedAt()?->format(\DateTimeInterface::ATOM),
         ];
 
         // Add attribute values
@@ -458,6 +456,41 @@ final class ProductVariationController extends AbstractController
         }
 
         return $variationData;
+    }
+
+    #[Route('/{id}', name: 'show', methods: ['GET'])]
+    public function show(int $id): JsonResponse
+    {
+        if (!$this->permissionService->hasPermission('product_view')) {
+            return new JsonResponse(
+                ApiResponse::error('Access denied')->toArray(),
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        $variation = $this->variationRepository->find($id);
+
+        if (!$variation) {
+            return new JsonResponse(
+                ApiResponse::error('Variation not found')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        return new JsonResponse(
+            ApiResponse::success([
+                'id' => $variation->getId(),
+                'sku' => $variation->getSku(),
+                'price' => $variation->getPrice(),
+                'special_price' => $variation->getSpecialPrice(),
+                'special_from' => $variation->getSpecialPriceFrom()?->format('Y-m-d'),
+                'special_to' => $variation->getSpecialPriceTo()?->format('Y-m-d'),
+                'weight' => $variation->getWeight(),
+                'active' => $variation->isActive(),
+                'created_at' => $variation->getCreatedAt()->format('c'),
+                'updated_at' => $variation->getUpdatedAt()?->format('c'),
+            ])->toArray()
+        );
     }
 
 }

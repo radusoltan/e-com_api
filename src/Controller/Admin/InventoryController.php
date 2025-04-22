@@ -152,13 +152,12 @@ final class InventoryController extends AbstractController
     /**
      * Get inventory details by ID
      */
-    #[Route('/{id}', name: 'get', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function getById(int $id): JsonResponse
+    #[Route('/{id}', name: 'show', methods: ['GET'])]
+    public function show(int $id): JsonResponse
     {
-        // Check permission
         if (!$this->permissionService->hasPermission('inventory_view')) {
             return new JsonResponse(
-                ApiResponse::error('Access denied', ['permission' => 'You do not have permission to view inventory'])->toArray(),
+                ApiResponse::error('Access denied')->toArray(),
                 Response::HTTP_FORBIDDEN
             );
         }
@@ -167,13 +166,23 @@ final class InventoryController extends AbstractController
 
         if (!$inventory) {
             return new JsonResponse(
-                ApiResponse::error('Inventory not found', ['id' => 'Inventory with this ID does not exist'])->toArray(),
+                ApiResponse::error('Inventory not found')->toArray(),
                 Response::HTTP_NOT_FOUND
             );
         }
 
         return new JsonResponse(
-            ApiResponse::success($this->formatInventoryData($inventory))->toArray()
+            ApiResponse::success([
+                'id' => $inventory->getId(),
+                'product' => $inventory->getProduct()?->getId(),
+                'variation' => $inventory->getProductVariation()?->getId(),
+                'warehouse' => $inventory->getWarehouse()?->getId(),
+                'quantity' => $inventory->getQuantity(),
+                'available' => $inventory->getAvailableQuantity(),
+                'reserved' => $inventory->getReserved(),
+                'status' => $inventory->getStatus(),
+                'backorders_allowed' => $inventory->isBackordersAllowed(),
+            ])->toArray()
         );
     }
 

@@ -86,9 +86,6 @@ class Product
         $this->relatedProducts = new ArrayCollection();
         $this->crossSells = new ArrayCollection();
         $this->upSells = new ArrayCollection();
-
-        // Initialize parent constructors
-        parent::__construct();
     }
 
     public function getId(): ?int

@@ -303,4 +303,19 @@ class CacheService
         return array_map([$this, 'getPrefixedTag'], $tags);
     }
 
+    /**
+     * Shortcut method for get(), semantic alias for readability.
+     *
+     * @param string $key The cache key
+     * @param int $ttl Time to live in seconds
+     * @param callable $callback Value generator if not cached
+     * @param bool $forceRefresh Bypass cache if true
+     * @param array $tags Tags for tagging the cache
+     * @return mixed
+     */
+    public function remember(string $key, int $ttl, callable $callback, bool $forceRefresh = false, array $tags = []): mixed
+    {
+        return $this->get($key, $callback, $ttl, $forceRefresh, $tags);
+    }
+
 }

@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\DTO\Response\ApiResponse;
+use App\DTO\Response\ResponsePaginator;
 use App\Entity\Product;
 use App\Repository\CategoryRepository;
 use App\Repository\ProductRepository;
@@ -48,81 +49,61 @@ final class ProductController extends AbstractController
         // Cache key includes all query parameters to ensure different results are cached separately
         $cacheKey = sprintf(
             'products_list_page_%d_limit_%d_category_%s_search_%s_sort_%s_%s',
-            $page,
-            $limit,
-            $categoryId ?? 'all',
-            $search ?? 'none',
-            $sortBy,
-            $sortOrder
+            $page, $limit, $categoryId ?? 'all', $search ?? 'none', $sortBy, $sortOrder
         );
 
-        return new JsonResponse(
-            $this->cacheService->get(
-                $cacheKey,
-                function() use ($page, $limit, $categoryId, $search, $sortBy, $sortOrder) {
-                    $queryBuilder = $this->productRepository->createQueryBuilderWithFilters(
-                        categoryId: $categoryId,
-                        search: $search,
-                        sortBy: $sortBy,
-                        sortOrder: $sortOrder,
-                        activeOnly: true
-                    );
 
-                    // Create paginator
-                    $adapter = new QueryAdapter($queryBuilder);
-                    $pagerfanta = Pagerfanta::createForCurrentPageWithMaxPerPage(
-                        $adapter,
-                        $page,
-                        $limit
-                    );
+        $response = $this->cacheService->get(
+            $cacheKey,
+            function () use ($page, $limit, $categoryId, $search, $sortBy, $sortOrder) {
+                $qb = $this->productRepository->createQueryBuilderWithFilters(
+                    categoryId: $categoryId,
+                    search: $search,
+                    sortBy: $sortBy,
+                    sortOrder: $sortOrder,
+                    activeOnly: true
+                );
 
-                    $products = [];
-                    foreach ($pagerfanta->getCurrentPageResults() as $product) {
-                        $products[] = $this->formatProductData($product);
-                    }
+                $adapter = new QueryAdapter($qb);
+                $pager = Pagerfanta::createForCurrentPageWithMaxPerPage($adapter, $page, $limit);
 
-                    return ApiResponse::success([
-                        'products' => $products,
-                        'pagination' => [
-                            'current_page' => $pagerfanta->getCurrentPage(),
-                            'per_page' => $pagerfanta->getMaxPerPage(),
-                            'total_items' => $pagerfanta->getNbResults(),
-                            'total_pages' => $pagerfanta->getNbPages(),
-                            'has_previous_page' => $pagerfanta->hasPreviousPage(),
-                            'has_next_page' => $pagerfanta->hasNextPage(),
-                        ]
-                    ])->toArray();
-                },
-                1800 // 30 minutes cache
-            )
+                $items = [];
+                foreach ($pager->getCurrentPageResults() as $product) {
+                    $items[] = $this->formatProductData($product);
+                }
+
+                return ResponsePaginator::paginated(
+                    $items,
+                    $page,
+                    $pager->getNbResults(),
+                    $limit
+                );
+            },
+            300,
+            false,
+            ["product", "product_page"]
         );
+
+        return new JsonResponse($response);
     }
 
     /**
      * Get product details by ID
      */
-    #[Route('/{id}', name: 'get', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function getById(int $id): JsonResponse
+    #[Route('/{id}', name: 'show', methods: ['GET'])]
+    public function show(int $id): JsonResponse
     {
-        $cacheKey = 'product_detail_' . $id;
+        $product = $this->productRepository->find($id);
+
+        if (!$product) {
+            return new JsonResponse(
+                ApiResponse::error('Product not found')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
+        }
 
         return new JsonResponse(
-            $this->cacheService->get(
-                $cacheKey,
-                function() use ($id) {
-                    $product = $this->productService->findById($id);
-
-                    if (!$product) {
-                        return ApiResponse::error('Product not found', ['id' => 'Product with this ID does not exist'])->toArray();
-                    }
-
-                    return ApiResponse::success(
-                        $this->formatProductData($product, true)
-                    )->toArray();
-                },
-                3600 // 1 hour cache
-            ),
-            $this->productService->findById($id) ? Response::HTTP_OK : Response::HTTP_NOT_FOUND
+            ApiResponse::success($this->formatProductData($product))->toArray()
         );
     }
 
