@@ -2,17 +2,27 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\ProductAvailabilityTrait;
+use App\Entity\Trait\ProductBasicTrait;
+use App\Entity\Trait\ProductPricingTrait;
+use App\Entity\Trait\TimestampableTrait;
 use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Money\Currency;
 use Money\Money;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
 {
 
+    use ProductBasicTrait;
+    use ProductPricingTrait;
+    use ProductAvailabilityTrait;
+    use TimestampableTrait;
+
+    // Product types
     const TYPE_SIMPLE = 'simple';
     const TYPE_CONFIGURABLE = 'configurable';
     const TYPE_VIRTUAL = 'virtual';
@@ -23,42 +33,6 @@ class Product
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
-
-    #[ORM\Column(length: 255)]
-    private ?string $name = null;
-
-    #[ORM\Column(length: 255, unique: true)]
-    private ?string $sku = null;
-
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $shortDescription = null;
-
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $description = null;
-
-    #[ORM\Column(length: 50)]
-    private ?string $type = self::TYPE_SIMPLE;
-
-    #[ORM\Column]
-    private ?bool $active = true;
-
-    #[ORM\Column]
-    private ?bool $featured = false;
-
-    #[ORM\Column(type: 'integer')]
-    private ?int $price = null; // Stored in cents
-
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private ?int $specialPrice = null; // Stored in cents
-
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $specialPriceFrom = null;
-
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $specialPriceTo = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?float $weight = null;
 
     #[ORM\ManyToMany(targetEntity: Category::class, inversedBy: 'products')]
     #[ORM\JoinTable(name: 'product_categories')]
@@ -84,12 +58,6 @@ class Product
     #[ORM\OneToMany(mappedBy: 'product', targetEntity: ConfigurableOption::class, orphanRemoval: true)]
     private Collection $configurableOptions;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $availableFrom = null;
-
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $availableTo = null;
-
     #[ORM\ManyToMany(targetEntity: Product::class, inversedBy: 'relatedProducts')]
     #[ORM\JoinTable(name: 'product_related')]
     private Collection $relatedTo;
@@ -105,12 +73,6 @@ class Product
     #[ORM\JoinTable(name: 'product_up_sells')]
     private Collection $upSells;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
-
     public function __construct()
     {
         $this->categories = new ArrayCollection();
@@ -124,160 +86,14 @@ class Product
         $this->relatedProducts = new ArrayCollection();
         $this->crossSells = new ArrayCollection();
         $this->upSells = new ArrayCollection();
-        $this->createdAt = new \DateTimeImmutable();
+
+        // Initialize parent constructors
+        parent::__construct();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-
-    public function setName(string $name): self
-    {
-        $this->name = $name;
-        return $this;
-    }
-
-    public function getSku(): ?string
-    {
-        return $this->sku;
-    }
-
-    public function setSku(string $sku): self
-    {
-        $this->sku = $sku;
-        return $this;
-    }
-
-    public function getShortDescription(): ?string
-    {
-        return $this->shortDescription;
-    }
-
-    public function setShortDescription(?string $shortDescription): self
-    {
-        $this->shortDescription = $shortDescription;
-        return $this;
-    }
-
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(?string $description): self
-    {
-        $this->description = $description;
-        return $this;
-    }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(string $type): self
-    {
-        $this->type = $type;
-        return $this;
-    }
-
-    public function isActive(): ?bool
-    {
-        return $this->active;
-    }
-
-    public function setActive(bool $active): self
-    {
-        $this->active = $active;
-        return $this;
-    }
-
-    public function isFeatured(): ?bool
-    {
-        return $this->featured;
-    }
-
-    public function setFeatured(bool $featured): self
-    {
-        $this->featured = $featured;
-        return $this;
-    }
-
-    public function getPrice(): ?int
-    {
-        return $this->price;
-    }
-
-    public function setPrice(int $price): self
-    {
-        $this->price = $price;
-        return $this;
-    }
-
-    /**
-     * Get price as a Money object
-     */
-    public function getPriceMoney(): Money
-    {
-        return Money::USD($this->price);
-    }
-
-    public function getSpecialPrice(): ?int
-    {
-        return $this->specialPrice;
-    }
-
-    public function setSpecialPrice(?int $specialPrice): self
-    {
-        $this->specialPrice = $specialPrice;
-        return $this;
-    }
-
-    /**
-     * Get special price as a Money object
-     */
-    public function getSpecialPriceMoney(): ?Money
-    {
-        return $this->specialPrice !== null ? Money::USD($this->specialPrice) : null;
-    }
-
-    public function getSpecialPriceFrom(): ?\DateTimeImmutable
-    {
-        return $this->specialPriceFrom;
-    }
-
-    public function setSpecialPriceFrom(?\DateTimeImmutable $specialPriceFrom): self
-    {
-        $this->specialPriceFrom = $specialPriceFrom;
-        return $this;
-    }
-
-    public function getSpecialPriceTo(): ?\DateTimeImmutable
-    {
-        return $this->specialPriceTo;
-    }
-
-    public function setSpecialPriceTo(?\DateTimeImmutable $specialPriceTo): self
-    {
-        $this->specialPriceTo = $specialPriceTo;
-        return $this;
-    }
-
-    public function getWeight(): ?float
-    {
-        return $this->weight;
-    }
-
-    public function setWeight(?float $weight): self
-    {
-        $this->weight = $weight;
-        return $this;
     }
 
     /**
@@ -304,14 +120,14 @@ class Product
     }
 
     /**
-     * @return Collection<int, ProductImage>
+     * @return Collection<int, Image>
      */
     public function getImages(): Collection
     {
         return $this->images;
     }
 
-    public function addImage(ProductImage $image): self
+    public function addImage(Image $image): self
     {
         if (!$this->images->contains($image)) {
             $this->images->add($image);
@@ -321,7 +137,7 @@ class Product
         return $this;
     }
 
-    public function removeImage(ProductImage $image): self
+    public function removeImage(Image $image): self
     {
         if ($this->images->removeElement($image)) {
             // set the owning side to null (unless already changed)
@@ -331,6 +147,20 @@ class Product
         }
 
         return $this;
+    }
+
+    /**
+     * Get default image or first image
+     */
+    public function getDefaultImage(): ?Image
+    {
+        foreach ($this->images as $image) {
+            if ($image->isDefault()) {
+                return $image;
+            }
+        }
+
+        return $this->images->first() ?: null;
     }
 
     /**
@@ -361,6 +191,20 @@ class Product
         }
 
         return $this;
+    }
+
+    /**
+     * Get attribute value by attribute code
+     */
+    public function getAttributeValue(string $attributeCode): ?ProductAttributeValue
+    {
+        foreach ($this->attributeValues as $attributeValue) {
+            if ($attributeValue->getAttribute()->getCode() === $attributeCode) {
+                return $attributeValue;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -476,53 +320,6 @@ class Product
         return $this;
     }
 
-    public function getAvailableFrom(): ?\DateTimeImmutable
-    {
-        return $this->availableFrom;
-    }
-
-    public function setAvailableFrom(?\DateTimeImmutable $availableFrom): self
-    {
-        $this->availableFrom = $availableFrom;
-        return $this;
-    }
-
-    public function getAvailableTo(): ?\DateTimeImmutable
-    {
-        return $this->availableTo;
-    }
-
-    public function setAvailableTo(?\DateTimeImmutable $availableTo): self
-    {
-        $this->availableTo = $availableTo;
-        return $this;
-    }
-
-    /**
-     * Check if product is available based on date range
-     */
-    public function isAvailable(): bool
-    {
-        $now = new \DateTimeImmutable();
-
-        // If no date restrictions, product is available
-        if ($this->availableFrom === null && $this->availableTo === null) {
-            return true;
-        }
-
-        // Check from date if set
-        if ($this->availableFrom !== null && $now < $this->availableFrom) {
-            return false;
-        }
-
-        // Check to date if set
-        if ($this->availableTo !== null && $now > $this->availableTo) {
-            return false;
-        }
-
-        return true;
-    }
-
     /**
      * @return Collection<int, Product>
      */
@@ -600,22 +397,6 @@ class Product
         return $this;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): self
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
-    }
-
     /**
      * Get current effective price (considers special price if applicable)
      */
@@ -629,66 +410,83 @@ class Product
     }
 
     /**
-     * Check if product has a valid special price
+     * Get price as a Money object
      */
-    public function hasValidSpecialPrice(): bool
+    public function getPriceMoney(): Money
     {
-        if ($this->specialPrice === null) {
-            return false;
+        return new Money(
+            $this->price,
+            new Currency($this->currencyCode ?? 'USD')
+        );
+    }
+
+    /**
+     * Get special price as a Money object
+     */
+    public function getSpecialPriceMoney(): ?Money
+    {
+        return $this->specialPrice !== null
+            ? new Money($this->specialPrice, new Currency($this->currencyCode ?? 'USD'))
+            : null;
+    }
+
+    /**
+     * Get current price as a Money object
+     */
+    public function getCurrentPriceMoney(): Money
+    {
+        return new Money(
+            $this->getCurrentPrice(),
+            new Currency($this->currencyCode ?? 'USD')
+        );
+    }
+
+    /**
+     * Check if product can be purchased
+     * NOTE: In a real implementation, this should delegate to an inventory service
+     */
+    public function canBePurchased(): bool
+    {
+        return $this->isActive() && $this->isAvailable();
+    }
+
+    /**
+     * Get total stock quantity across all warehouses
+     */
+    public function getTotalStockQuantity(): int
+    {
+        $total = 0;
+        foreach ($this->inventories as $inventory) {
+            $total += $inventory->getQuantity();
         }
+        return $total;
+    }
 
-        $now = new \DateTimeImmutable();
-
-        // Check from date if set
-        if ($this->specialPriceFrom !== null && $now < $this->specialPriceFrom) {
-            return false;
+    /**
+     * Get total available stock quantity (not reserved)
+     */
+    public function getTotalAvailableQuantity(): int
+    {
+        $total = 0;
+        foreach ($this->inventories as $inventory) {
+            $total += $inventory->getAvailableQuantity();
         }
-
-        // Check to date if set
-        if ($this->specialPriceTo !== null && $now > $this->specialPriceTo) {
-            return false;
-        }
-
-        return true;
+        return $total;
     }
 
     /**
-     * Check if product is configurable
+     * Check if product has any stock
      */
-    public function isConfigurable(): bool
+    public function hasStock(): bool
     {
-        return $this->type === self::TYPE_CONFIGURABLE;
+        return $this->getTotalAvailableQuantity() > 0;
     }
 
     /**
-     * Check if product is simple
+     * @ORM\PreUpdate
      */
-    public function isSimple(): bool
+    public function onPreUpdate(): void
     {
-        return $this->type === self::TYPE_SIMPLE;
-    }
-
-    /**
-     * Check if product is virtual
-     */
-    public function isVirtual(): bool
-    {
-        return $this->type === self::TYPE_VIRTUAL;
-    }
-
-    /**
-     * Check if product is downloadable
-     */
-    public function isDownloadable(): bool
-    {
-        return $this->type === self::TYPE_DOWNLOADABLE;
-    }
-
-    /**
-     * Check if product is bundle
-     */
-    public function isBundle(): bool
-    {
-        return $this->type === self::TYPE_BUNDLE;
+        $this->updatedAt = new \DateTimeImmutable();
     }
 }

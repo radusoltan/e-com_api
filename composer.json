@@ -26,7 +26,8 @@
         "symfony/serializer": "7.2.*",
         "symfony/uid": "7.2.*",
         "symfony/validator": "7.2.*",
-        "symfony/yaml": "7.2.*"
+        "symfony/yaml": "7.2.*",
+        "ext-intl": "*"
     },
     "config": {
         "allow-plugins": {
