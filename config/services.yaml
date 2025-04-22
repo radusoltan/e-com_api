@@ -30,3 +30,13 @@ services:
         arguments:
             $refreshTokenService: '@App\Service\RefreshTokenService'
         tags: [ 'console.command' ]
+
+    app.cache.tag_aware:
+        class: Symfony\Component\Cache\Adapter\TagAwareAdapter
+        arguments:
+            - '@cache.app'
+    App\Service\CacheService:
+        arguments:
+            $cache: '@app.cache.tag_aware'
+            $logger: '@logger'
+            $cacheEnabled: '%kernel.debug%'

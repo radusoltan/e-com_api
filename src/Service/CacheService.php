@@ -3,18 +3,31 @@
 namespace App\Service;
 
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 class CacheService
 {
+    private TagAwareAdapterInterface $cache;
+
     public function __construct(
-        private TagAwareAdapterInterface $cache,
-        private LoggerInterface $logger,
+        LoggerInterface $logger,
+        ?TagAwareAdapterInterface $cache = null,
         private bool $cacheEnabled = true,
         private string $cachePrefix = 'app_',
         private array $tagPrefixes = []
-    ) {}
+    ) {
+        // If no cache adapter is injected, create a default one
+        if ($cache === null) {
+            $this->cache = new TagAwareAdapter(new FilesystemAdapter());
+        } else {
+            $this->cache = $cache;
+        }
+
+        $this->logger = $logger;
+    }
 
     /**
      * Retrieve or store cached content with tags

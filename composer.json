@@ -8,6 +8,8 @@
         "ext-bcmath": "*",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "ext-intl": "*",
+        "babdev/pagerfanta-bundle": "^4.5",
         "doctrine/dbal": "^3.9.4",
         "doctrine/doctrine-bundle": "^2.14",
         "doctrine/doctrine-migrations-bundle": "^3.4.1",
@@ -15,6 +17,7 @@
         "lexik/jwt-authentication-bundle": "^3.1.1",
         "moneyphp/money": "^4.7",
         "nelmio/cors-bundle": "^2.5",
+        "pagerfanta/doctrine-orm-adapter": "^4.7",
         "predis/predis": "^2.3",
         "symfony/cache": "7.2.*",
         "symfony/console": "7.2.*",
@@ -26,8 +29,7 @@
         "symfony/serializer": "7.2.*",
         "symfony/uid": "7.2.*",
         "symfony/validator": "7.2.*",
-        "symfony/yaml": "7.2.*",
-        "ext-intl": "*"
+        "symfony/yaml": "7.2.*"
     },
     "config": {
         "allow-plugins": {

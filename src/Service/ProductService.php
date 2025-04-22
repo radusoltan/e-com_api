@@ -207,4 +207,140 @@ class ProductService
         $this->cacheService->delete('product_sku_' . $product->getSku());
     }
 
+    /**
+     * Get stock information for a product
+     */
+    public function getStockInfo(Product $product): array
+    {
+        $cacheKey = 'product_stock_info_' . $product->getId();
+
+        return $this->cacheService->get(
+            $cacheKey,
+            function() use ($product) {
+                // For simple products, check inventory directly
+                if ($product->isSimple()) {
+                    $totalQuantity = 0;
+                    $availableQuantity = 0;
+                    $backordersAllowed = false;
+                    $status = 'out_of_stock';
+
+                    // Aggregate inventory data from all warehouses
+                    foreach ($product->getInventories() as $inventory) {
+                        $totalQuantity += $inventory->getQuantity();
+                        $availableQuantity += $inventory->getAvailableQuantity();
+
+                        if ($inventory->isBackordersAllowed()) {
+                            $backordersAllowed = true;
+                        }
+
+                        // Use the most optimistic status across warehouses
+                        if ($inventory->getStatus() === 'in_stock' && $inventory->getAvailableQuantity() > 0) {
+                            $status = 'in_stock';
+                        } elseif ($inventory->getStatus() === 'backorder' && $status !== 'in_stock') {
+                            $status = 'backorder';
+                        }
+                    }
+
+                    return [
+                        'total_quantity' => $totalQuantity,
+                        'available_quantity' => $availableQuantity,
+                        'has_stock' => $availableQuantity > 0,
+                        'backorders_allowed' => $backordersAllowed,
+                        'status' => $status,
+                    ];
+                }
+
+                // For configurable products, check if any variations have stock
+                if ($product->isConfigurable()) {
+                    $hasStock = false;
+                    $backordersAllowed = false;
+                    $status = 'out_of_stock';
+
+                    foreach ($product->getVariations() as $variation) {
+                        if (!$variation->isActive()) {
+                            continue;
+                        }
+
+                        // Get variation stock info
+                        $variationStockInfo = $this->getVariationStockInfo($variation);
+
+                        if ($variationStockInfo['has_stock']) {
+                            $hasStock = true;
+                        }
+
+                        if ($variationStockInfo['backorders_allowed']) {
+                            $backordersAllowed = true;
+                        }
+
+                        // Use the most optimistic status across variations
+                        if ($variationStockInfo['status'] === 'in_stock') {
+                            $status = 'in_stock';
+                        } elseif ($variationStockInfo['status'] === 'backorder' && $status !== 'in_stock') {
+                            $status = 'backorder';
+                        }
+                    }
+
+                    return [
+                        'has_stock' => $hasStock,
+                        'backorders_allowed' => $backordersAllowed,
+                        'status' => $status,
+                    ];
+                }
+
+                // For virtual/downloadable products, they're always in stock
+                if ($product->isVirtual() || $product->isDownloadable()) {
+                    return [
+                        'has_stock' => true,
+                        'backorders_allowed' => true,
+                        'status' => 'in_stock',
+                    ];
+                }
+
+                // Default for other product types
+                return [
+                    'has_stock' => false,
+                    'backorders_allowed' => false,
+                    'status' => 'out_of_stock',
+                ];
+            },
+            300 // 5 minute cache
+        );
+    }
+
+    /**
+     * Get stock information for a product variation
+     */
+    public function getVariationStockInfo(ProductVariation $variation): array
+    {
+        $totalQuantity = 0;
+        $availableQuantity = 0;
+        $backordersAllowed = false;
+        $status = 'out_of_stock';
+
+        // Aggregate inventory data from all warehouses
+        foreach ($variation->getInventories() as $inventory) {
+            $totalQuantity += $inventory->getQuantity();
+            $availableQuantity += $inventory->getAvailableQuantity();
+
+            if ($inventory->isBackordersAllowed()) {
+                $backordersAllowed = true;
+            }
+
+            // Use the most optimistic status across warehouses
+            if ($inventory->getStatus() === 'in_stock' && $inventory->getAvailableQuantity() > 0) {
+                $status = 'in_stock';
+            } elseif ($inventory->getStatus() === 'backorder' && $status !== 'in_stock') {
+                $status = 'backorder';
+            }
+        }
+
+        return [
+            'total_quantity' => $totalQuantity,
+            'available_quantity' => $availableQuantity,
+            'has_stock' => $availableQuantity > 0,
+            'backorders_allowed' => $backordersAllowed,
+            'status' => $status,
+        ];
+    }
+
 }
