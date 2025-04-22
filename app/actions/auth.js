@@ -1,35 +1,30 @@
-'use server'
 import {LoginFormSchema} from "@/app/(auth)/login/definition";
 import {api} from "@/app/actions/api";
 
-export async function login(state, formData){
+export const login = async (state, formData)=>{
 
-  // Validate form fields
   const validatedFields = LoginFormSchema.safeParse({
     username: formData.get('username'),
     password: formData.get('password'),
   })
 
-  // If any form fields are invalid, return early
-  if (!validatedFields.success) {
+  if(!validatedFields.success){
     return {
       success: false,
       errors: validatedFields.error.flatten().fieldErrors,
+      message: "Invalid form data. Please check your inputs"
     }
   }
-  console.log(validatedFields);
+
   try {
-    api.login({...validatedFields.data})
+    const {username, password} = validatedFields.data
 
-  } catch (error) {
-    console.log(error)
-    return {
-      success: false,
-      message: error,
-    }
+    const data = await api.login({username, password})
+
+    console.log(data)
+
+  } catch (e) {
+
   }
-
-
-
 
 }

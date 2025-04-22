@@ -1,7 +1,7 @@
 "use client"
 
 import {useActionState, useState} from "react"
-import {login} from "@/app/(auth)/action";
+import {login} from "@/app/actions/auth";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ')
