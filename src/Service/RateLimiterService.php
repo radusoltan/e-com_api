@@ -11,13 +11,13 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
 class RateLimiterService
 {
     public function __construct(
-        #[Autowire('@limiter.login')]
+        #[Autowire('@rate_limiter.login')]
         private RateLimiterFactory $loginLimiter,
-        #[Autowire('@limiter.registration')]
+        #[Autowire('@rate_limiter.registration')]
         private RateLimiterFactory $registrationLimiter,
-        #[Autowire('@limiter.token_refresh')]
+        #[Autowire('@rate_limiter.token_refresh')]
         private RateLimiterFactory $tokenRefreshLimiter,
-        #[Autowire('@limiter.global_api')]
+        #[Autowire('@rate_limiter.global_api')]
         private RateLimiterFactory $globalApiLimiter,
     ) {}
 

@@ -23,7 +23,7 @@ final class AuthController extends AbstractController
      * Refresh JWT token using a valid refresh token
      */
     #[Route('/token/refresh', name: 'token_refresh', methods: ['POST'])]
-    public function refreshToken(
+    public function refresh(
         Request $request,
         RequestValidatorService $requestValidator,
         RefreshTokenService $refreshTokenService,
@@ -31,25 +31,26 @@ final class AuthController extends AbstractController
         UserService $userService,
         RateLimiterService $rateLimiterService
     ): JsonResponse {
-        // Check rate limiting first
+        // Apply rate limiting
         $limiterResponse = $rateLimiterService->check($request, 'token_refresh');
         if ($limiterResponse instanceof JsonResponse) {
             return $limiterResponse;
         }
 
         try {
+            // Validate request format
             $data = $requestValidator->parseJsonRequest($request);
 
-            // Check for refresh token
+            // Check if refresh token is provided
             $refreshToken = $data['refresh_token'] ?? null;
             if (!$refreshToken) {
                 return new JsonResponse(
-                    ApiResponse::error('Missing refresh_token parameter')->toArray(),
+                    ApiResponse::error('Missing refresh token parameter')->toArray(),
                     Response::HTTP_BAD_REQUEST
                 );
             }
 
-            // Validate refresh token
+            // Validate the refresh token and get the associated user
             $user = $refreshTokenService->validate($refreshToken, $request);
             if (!$user) {
                 return new JsonResponse(
@@ -58,24 +59,32 @@ final class AuthController extends AbstractController
                 );
             }
 
-            // Update user last login time
+            // Update user's last login timestamp
             $userService->updateLastLogin($user);
 
-            // Implement refresh token rotation (delete old, create new)
+            // Create new tokens (token rotation for security)
             $refreshTokenService->delete($refreshToken);
             $newRefreshToken = $refreshTokenService->create($user, $request);
+            $newJwtToken = $jwtManager->create($user);
 
-            // Return new JWT token and refresh token
+            // Return successful response with new tokens
             return new JsonResponse(
                 ApiResponse::success([
-                    'token' => $jwtManager->create($user),
+                    'token' => $newJwtToken,
                     'refresh_token' => $newRefreshToken->getToken(),
                     'expires_at' => $newRefreshToken->getExpiresAt()->format('c'),
+                    'user' => [
+                        'id' => $user->getId(),
+                        'username' => $user->getUsername(),
+                        'email' => $user->getEmail(),
+                        'fullName' => $user->getFullName(),
+                    ],
                 ], 'Token refreshed successfully')->toArray()
             );
+
         } catch (\Exception $e) {
-            // This will be caught by our global exception handler, but we keep
-            // this catch block for additional handling if needed
+            // Return a generic error message to avoid information leakage
+            // This will be caught by the global exception handler
             throw $e;
         }
     }
@@ -83,7 +92,7 @@ final class AuthController extends AbstractController
     /**
      * Logout endpoint - revokes the refresh token
      */
-    #[Route('/logout', name: 'logout', methods: ['POST'])]
+    #[Route('/logout', name: 'logout', methods: ['POST', 'OPTIONS'])]
     public function logout(
         Request $request,
         RequestValidatorService $requestValidator,

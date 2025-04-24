@@ -19,6 +19,7 @@
         "nelmio/cors-bundle": "^2.5",
         "pagerfanta/doctrine-orm-adapter": "^4.7",
         "predis/predis": "^2.3",
+        "psr/simple-cache": "*",
         "symfony/cache": "7.2.*",
         "symfony/console": "7.2.*",
         "symfony/dotenv": "7.2.*",
