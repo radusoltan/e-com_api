@@ -4,15 +4,19 @@ framework:
             policy: 'fixed_window'
             limit: 5
             interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'  # Use this option
         registration:
             policy: 'fixed_window'
             limit: 3
             interval: '1 hour'
+            cache_pool: 'rate_limiter.cache'
         token_refresh:
             policy: 'fixed_window'
             limit: 10
             interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'
         global_api:
             policy: 'sliding_window'
             limit: 100
             interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'

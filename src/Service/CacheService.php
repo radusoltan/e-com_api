@@ -3,30 +3,28 @@
 namespace App\Service;
 
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
-use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 class CacheService
 {
-    private TagAwareAdapterInterface $cache;
-
     public function __construct(
-        LoggerInterface $logger,
-        ?TagAwareAdapterInterface $cache = null,
+        private LoggerInterface $logger,
+        private RedisService $redisService,
+        private ?TagAwareAdapter $cache = null,
         private bool $cacheEnabled = true,
         private string $cachePrefix = 'app_',
         private array $tagPrefixes = []
     ) {
-        // If no cache adapter is injected, create a default one
+        // If no cache adapter is injected, create a Redis-based one
         if ($cache === null) {
-            $this->cache = new TagAwareAdapter(new FilesystemAdapter());
+            $redisClient = $this->redisService->getClient();
+            $redisAdapter = new RedisAdapter($redisClient);
+            $this->cache = new TagAwareAdapter($redisAdapter);
         } else {
             $this->cache = $cache;
         }
-
-        $this->logger = $logger;
     }
 
     /**
