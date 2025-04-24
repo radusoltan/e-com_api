@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\DTO\Catalog\ProductDTO;
 use App\DTO\Response\ApiResponse;
 use App\DTO\Response\ResponsePaginator;
 use App\Entity\Product;
@@ -18,6 +19,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/products', name: 'api_products_')]
 final class ProductController extends AbstractController
@@ -28,6 +30,44 @@ final class ProductController extends AbstractController
         private ProductService $productService,
         private CacheService $cacheService,
     ){}
+
+    /**
+     * Create Product
+     */
+    #[Route('', name: 'create', methods: ['POST'])]
+    public function create(Request $request, ValidatorInterface $validator): JsonResponse{
+        $data = json_decode($request->getContent());
+        $dto = new ProductDTO();
+
+        $dto->name = $data['name'] ?? '';
+        $dto->sku = $data['sku'] ?? '';
+        $dto->price = $data['price'] ?? 0;
+        $dto->specialPrice = $data['specialPrice'] ?? null;
+        $dto->active = $data['active'] ?? true;
+        $dto->type = $data['type'] ?? 'simple';
+        $dto->categories = $data['categories'] ?? [];
+        $dto->tags = $data['tags'] ?? [];
+
+        $errors = $validator->validate($dto);
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[$error->getPropertyPath()][] = $error->getMessage();
+            }
+
+            return $this->json(ApiResponse::error('Validation failed', $errorMessages));
+        }
+
+        $product = $this->productService->create($dto);
+
+        return new JsonResponse(
+            ApiResponse::success([
+                'id' => $product->getId(),
+                'name' => $product->getName(),
+            ], 'Product created successfully')
+        );
+
+    }
 
     /**
      * Get list of products with pagination

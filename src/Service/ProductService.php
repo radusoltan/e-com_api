@@ -2,9 +2,12 @@
 
 namespace App\Service;
 
+use App\DTO\Catalog\ProductDTO;
 use App\Entity\Product;
 use App\Entity\ProductVariation;
+use App\Repository\CategoryRepository;
 use App\Repository\ProductRepository;
+use App\Repository\TagRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Money\Currency;
 use Money\Money;
@@ -12,15 +15,43 @@ use Symfony\Component\Uid\Uuid;
 
 class ProductService
 {
-    private string $defaultCurrencyCode;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ProductRepository $productRepository,
         private CacheService $cacheService,
         private CurrencyService $currencyService,
-        string $defaultCurrencyCode = 'USD'
-    ) {
-        $this->defaultCurrencyCode = $defaultCurrencyCode;
+        private string $defaultCurrencyCode = 'USD',
+        private CategoryRepository $categoryRepo,
+        private TagRepository $tagRepo,
+    ) {}
+
+    public function create(ProductDTO $dto): Product
+    {
+        $product = new Product();
+        $product->setName($dto->name);
+        $product->setSku($dto->sku);
+        $product->setPrice($dto->price);
+        $product->setSpecialPrice($dto->specialPrice);
+        $product->setActive($dto->active);
+        $product->setType($dto->type);
+
+        foreach ($dto->categories as $categoryId) {
+            if ($category = $this->categoryRepo->find($categoryId)) {
+                $product->addCategory($category);
+            }
+        }
+
+        foreach ($dto->tags as $tagId) {
+            if ($tag = $this->tagRepo->find($tagId)) {
+                $product->addTag($tag);
+            }
+        }
+
+        $this->entityManager->persist($product);
+        $this->entityManager->flush();
+
+        return $product;
     }
 
     /**

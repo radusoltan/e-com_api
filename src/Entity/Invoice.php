@@ -15,7 +15,6 @@ class Invoice
     private ?int $id = null;
 
     #[ORM\OneToOne(mappedBy: 'invoice', cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
     private ?Order $order = null;
 
     #[ORM\Column(length: 64, unique: true)]
