@@ -32,16 +32,18 @@ class RedisSessionHandler extends AbstractSessionHandler
 
     public function close(): bool
     {
-        // TODO: Implement close() method.
+        return true; // Redis doesn't require explicit close
     }
 
     public function gc(int $max_lifetime): int|false
     {
-        // TODO: Implement gc() method.
+        // Redis handles expiration automatically
+        return 0;
     }
 
     public function updateTimestamp(string $id, string $data): bool
     {
-        // TODO: Implement updateTimestamp() method.
+        // Update TTL on session access
+        return $this->redis->expire(self::PREFIX . $id, $this->ttl);
     }
 }

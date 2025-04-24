@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\DTO\Response\ApiResponse;
+use App\Service\JwtBlacklistService;
 use App\Service\RateLimiterService;
 use App\Service\RefreshTokenService;
 use App\Service\RequestValidatorService;
@@ -86,10 +87,20 @@ final class AuthController extends AbstractController
     public function logout(
         Request $request,
         RequestValidatorService $requestValidator,
-        RefreshTokenService $refreshTokenService
+        RefreshTokenService $refreshTokenService,
+        JwtBlacklistService $jwtBlacklistService,
+        TokenStorageInterface $tokenStorage
     ): JsonResponse {
         try {
             $data = $requestValidator->parseJsonRequest($request);
+
+            // Get JWT token from authorization header
+            $token = $request->headers->get('Authorization');
+            if ($token && strpos($token, 'Bearer ') === 0) {
+                $token = substr($token, 7);
+                // Add token to blacklist with TTL
+                $jwtBlacklistService->blacklist($token, 3600); // 1 hour or match token TTL
+            }
 
             $refreshToken = $data['refresh_token'] ?? null;
             if ($refreshToken) {
@@ -101,7 +112,6 @@ final class AuthController extends AbstractController
                 Response::HTTP_OK
             );
         } catch (\Exception $e) {
-            // This will be caught by our global exception handler
             throw $e;
         }
     }

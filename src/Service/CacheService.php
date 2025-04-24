@@ -15,8 +15,14 @@ class CacheService
         private ?TagAwareAdapter $cache = null,
         private bool $cacheEnabled = true,
         private string $cachePrefix = 'app_',
-        private array $tagPrefixes = []
+        private array $tagPrefixes = [],
+        private string $environment = 'prod' // Inject from kernel.environment
     ) {
+        // Disable caching in dev environment by default unless explicitly enabled
+        if ($environment === 'dev' && $cacheEnabled !== true) {
+            $this->cacheEnabled = false;
+        }
+
         // If no cache adapter is injected, create a Redis-based one
         if ($cache === null) {
             $redisClient = $this->redisService->getClient();
