@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\DTO\Response\ApiResponse;
 use App\DTO\User\UserRegistrationDTO;
+use App\Service\RateLimiterService;
 use App\Service\RefreshTokenService;
 use App\Service\RequestValidatorService;
 use App\Service\UserService;
@@ -26,8 +27,16 @@ final class RegistrationController extends AbstractController
         RequestValidatorService $requestValidator,
         UserService $userService,
         JWTTokenManagerInterface $jwtManager,
-        RefreshTokenService $refreshTokenService
+        RefreshTokenService $refreshTokenService,
+        RateLimiterService $rateLimiterService
     ): JsonResponse {
+
+        // Check rate limiting first
+        $limiterResponse = $rateLimiterService->check($request, 'registration');
+        if ($limiterResponse instanceof JsonResponse) {
+            return $limiterResponse;
+        }
+
         try {
             // Deserialize and validate request into DTO
             /** @var UserRegistrationDTO $registrationDTO */

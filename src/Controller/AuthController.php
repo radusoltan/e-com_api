@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\DTO\Response\ApiResponse;
+use App\Service\RateLimiterService;
 use App\Service\RefreshTokenService;
 use App\Service\RequestValidatorService;
 use App\Service\UserService;
@@ -26,8 +27,15 @@ final class AuthController extends AbstractController
         RequestValidatorService $requestValidator,
         RefreshTokenService $refreshTokenService,
         JWTTokenManagerInterface $jwtManager,
-        UserService $userService
+        UserService $userService,
+        RateLimiterService $rateLimiterService
     ): JsonResponse {
+        // Check rate limiting first
+        $limiterResponse = $rateLimiterService->check($request, 'token_refresh');
+        if ($limiterResponse instanceof JsonResponse) {
+            return $limiterResponse;
+        }
+
         try {
             $data = $requestValidator->parseJsonRequest($request);
 

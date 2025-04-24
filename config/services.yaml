@@ -40,3 +40,56 @@ services:
             $cache: '@app.cache.tag_aware'
             $logger: '@logger'
             $cacheEnabled: '%kernel.debug%'
+
+    # Rate limiter factories
+    app.rate_limiter.login:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'fixed_window'
+                limit: 5
+                interval: '1 minute'
+            $storage: '@cache.rate_limiter'
+
+    app.rate_limiter.registration:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'fixed_window'
+                limit: 3
+                interval: '1 hour'
+            $storage: '@cache.rate_limiter'
+
+    app.rate_limiter.token_refresh:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'fixed_window'
+                limit: 10
+                interval: '1 minute'
+            $storage: '@cache.rate_limiter'
+
+    app.rate_limiter.global_api:
+        class: Symfony\Component\RateLimiter\RateLimiterFactory
+        arguments:
+            $config:
+                policy: 'sliding_window'
+                limit: 100
+                interval: '1 minute'
+            $storage: '@cache.rate_limiter'
+
+    # RateLimiter service
+    App\Service\RateLimiterService:
+        arguments:
+            $loginLimiter: '@app.rate_limiter.login'
+            $registrationLimiter: '@app.rate_limiter.registration'
+            $tokenRefreshLimiter: '@app.rate_limiter.token_refresh'
+            $globalApiLimiter: '@app.rate_limiter.global_api'
+
+    App\EventListener\PreAuthenticationListener:
+        tags:
+            - { name: kernel.event_subscriber }
+
+    App\EventListener\GlobalApiRateLimitListener:
+        tags:
+            - { name: kernel.event_subscriber }
